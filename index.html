@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Điểm danh học viên</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 flex items-center justify-center min-h-screen">
+    <div class="bg-white p-8 rounded-lg shadow-lg w-full max-w-md">
+        <h1 class="text-2xl font-bold text-center mb-6">Điểm danh học viên</h1>
+        <div id="message" class="hidden mb-4 p-4 rounded text-center"></div>
+        <div id="formContainer">
+            <div class="mb-4">
+                <label class="block text-sm font-medium text-gray-700">Họ và tên</label>
+                <input type="text" id="fullName" pattern="[A-Za-zÀ-ỹ\s]+" required
+                    class="mt-1 block w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="Nhập họ và tên (không chứa số)">
+            </div>
+            <div class="mb-4">
+                <label class="block text-sm font-medium text-gray-700">Số điện thoại</label>
+                <input type="tel" id="phoneNumber" pattern="[0-9]+" required
+                    class="mt-1 block w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="Nhập số điện thoại (chỉ chứa số)">
+            </div>
+            <button id="checkInButton" onclick="submitCheckIn()"
+                class="w-full bg-blue-600 text-white p-2 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                Điểm danh
+            </button>
+            <button id="notMeButton" onclick="clearForm()"
+                class="w-full mt-2 bg-gray-300 text-gray-700 p-2 rounded-md hover:bg-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-500">
+                Không phải tôi
+            </button>
+        </div>
+    </div>
+
+    <script>
+        let userInfo = localStorage.getItem('userInfo') ? JSON.parse(localStorage.getItem('userInfo')) : null;
+
+        window.onload = function() {
+            if (userInfo) {
+                document.getElementById('fullName').value = userInfo.fullName;
+                document.getElementById('phoneNumber').value = userInfo.phoneNumber;
+            }
+        };
+
+        function showMessage(message, type) {
+            const messageDiv = document.getElementById('message');
+            messageDiv.textContent = message;
+            messageDiv.className = `mb-4 p-4 rounded text-center ${type === 'success' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`;
+            messageDiv.classList.remove('hidden');
+            setTimeout(() => messageDiv.classList.add('hidden'), 5000);
+        }
+
+        function clearForm() {
+            localStorage.removeItem('userInfo');
+            document.getElementById('fullName').value = '';
+            document.getElementById('phoneNumber').value = '';
+            showMessage('Thông tin đã được xóa. Vui lòng điền lại.', 'success');
+        }
+
+        async function submitCheckIn() {
+            const fullName = document.getElementById('fullName').value.trim();
+            const phoneNumber = document.getElementById('phoneNumber').value.trim();
+
+            if (!fullName.match(/^[A-Za-zÀ-ỹ\s]+$/)) {
+                showMessage('Họ và tên chỉ được chứa chữ cái và dấu tiếng Việt.', 'error');
+                return;
+            }
+            if (!phoneNumber.match(/^[0-9]+$/)) {
+                showMessage('Số điện thoại chỉ được chứa số.', 'error');
+                return;
+            }
+
+            try {
+                const position = await getLocation();
+                const deviceInfo = navigator.userAgent;
+                const response = await fetch('1GgnSl45d90TkvUzkepRUAe67LIbccSFEE3-HjzzdUPs', {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        fullName,
+                        phoneNumber,
+                        coordinates: position ? `${position.coords.latitude}, ${position.coords.longitude}` : 'Không xác định',
+                        device: deviceInfo
+                    })
+                });
+                const result = await response.json();
+                if (result.status === 'success') {
+                    localStorage.setItem('userInfo', JSON.stringify({ fullName, phoneNumber }));
+                    showMessage('Điểm danh thành công!', 'success');
+                } else {
+                    showMessage(result.message || 'Hôm nay bạn đã điểm danh.', 'error');
+                }
+            } catch (error) {
+                showMessage('Lỗi khi điểm danh. Vui lòng thử lại.', 'error');
+            }
+        }
+
+        function getLocation() {
+            return new Promise((resolve, reject) => {
+                if (navigator.geolocation) {
+                    navigator.geolocation.getCurrentPosition(resolve, () => resolve(null));
+                } else {
+                    resolve(null);
+                }
+            });
+        }
+    </script>
+</body>
+</html>
