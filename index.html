@@ -76,17 +76,28 @@
             try {
                 const position = await getLocation();
                 const deviceInfo = navigator.userAgent;
+                const payload = {
+                    fullName,
+                    phoneNumber,
+                    coordinates: position ? `${position.coords.latitude}, ${position.coords.longitude}` : 'Không xác định',
+                    device: deviceInfo
+                };
+                console.log('Sending payload:', payload); // Debug payload
                 const response = await fetch('https://script.google.com/macros/s/AKfycbwWbtLbTZDGMTY0J0bzwwwOrYAxCagCdH3c5vVksPnta74Tf6FNEixQpDNzl1XYlkDY-Q/exec', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        fullName,
-                        phoneNumber,
-                        coordinates: position ? `${position.coords.latitude}, ${position.coords.longitude}` : 'Không xác định',
-                        device: deviceInfo
-                    })
+                    body: JSON.stringify(payload)
                 });
-                const result = await response.json();
+                const text = await response.text();
+                console.log('Raw Response:', text); // Debug raw response
+                let result;
+                try {
+                    result = JSON.parse(text);
+                } catch (parseError) {
+                    console.error('Parse Error:', parseError, 'Raw Response:', text);
+                    showMessage('Lỗi server: Phản hồi không hợp lệ.', 'error');
+                    return;
+                }
                 if (result.status === 'success') {
                     localStorage.setItem('userInfo', JSON.stringify({ fullName, phoneNumber }));
                     showMessage('Điểm danh thành công!', 'success');
@@ -94,7 +105,7 @@
                     showMessage(result.message || 'Hôm nay bạn đã điểm danh.', 'error');
                 }
             } catch (error) {
-                console.error('Error:', error);
+                console.error('Fetch Error:', error);
                 showMessage(`Lỗi khi điểm danh: ${error.message}`, 'error');
             }
         }
