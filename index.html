@@ -15,55 +15,28 @@
                 <label class="block text-sm font-medium text-gray-700">Họ và tên</label>
                 <input type="text" id="fullName" pattern="[A-Za-zÀ-ỹ\s]+" required
                     class="mt-1 block w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    placeholder="Nhập họ và tên (không chứa số)">
+                    placeholder="Nhập họ và tên">
             </div>
             <div class="mb-4">
                 <label class="block text-sm font-medium text-gray-700">Số điện thoại</label>
                 <input type="tel" id="phoneNumber" pattern="[0-9]+" required
                     class="mt-1 block w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    placeholder="Nhập số điện thoại (chỉ chứa số)">
+                    placeholder="Nhập số điện thoại">
             </div>
             <button id="checkInButton" onclick="submitCheckIn()"
-                class="w-full bg-blue-600 text-white p-2 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                class="w-full bg-blue-600 text-white p-2 rounded-md hover:bg-blue-700">
                 Điểm danh
             </button>
             <button id="notMeButton" onclick="clearForm()"
-                class="w-full mt-2 bg-gray-300 text-gray-700 p-2 rounded-md hover:bg-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-500">
+                class="w-full mt-2 bg-gray-300 text-gray-700 p-2 rounded-md hover:bg-gray-400">
                 Không phải tôi
             </button>
         </div>
     </div>
-
     <script>
-        let userInfo = localStorage.getItem('userInfo') ? JSON.parse(localStorage.getItem('userInfo')) : null;
-
-        window.onload = function() {
-            const urlParams = new URLSearchParams(window.location.search);
-            const fullName = urlParams.get('name') || (userInfo ? userInfo.fullName : '');
-            const phoneNumber = urlParams.get('phone') || (userInfo ? userInfo.phoneNumber : '');
-            document.getElementById('fullName').value = fullName;
-            document.getElementById('phoneNumber').value = phoneNumber;
-        };
-
-        function showMessage(message, type) {
-            const messageDiv = document.getElementById('message');
-            messageDiv.textContent = message;
-            messageDiv.className = `mb-4 p-4 rounded text-center ${type === 'success' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`;
-            messageDiv.classList.remove('hidden');
-            setTimeout(() => messageDiv.classList.add('hidden'), 5000);
-        }
-
-        function clearForm() {
-            localStorage.removeItem('userInfo');
-            document.getElementById('fullName').value = '';
-            document.getElementById('phoneNumber').value = '';
-            showMessage('Thông tin đã được xóa. Vui lòng điền lại.', 'success');
-        }
-
         async function submitCheckIn() {
             const fullName = document.getElementById('fullName').value.trim();
             const phoneNumber = document.getElementById('phoneNumber').value.trim();
-
             if (!fullName.match(/^[A-Za-zÀ-ỹ\s]+$/)) {
                 showMessage('Họ và tên chỉ được chứa chữ cái và dấu tiếng Việt.', 'error');
                 return;
@@ -72,52 +45,34 @@
                 showMessage('Số điện thoại chỉ được chứa số.', 'error');
                 return;
             }
-
             try {
-                const position = await getLocation();
-                const deviceInfo = navigator.userAgent;
-                const payload = {
-                    fullName,
-                    phoneNumber,
-                    coordinates: position ? `${position.coords.latitude}, ${position.coords.longitude}` : 'Không xác định',
-                    device: deviceInfo
-                };
-                console.log('Sending payload:', payload);
-                const response = await fetch('https://script.google.com/macros/s/AKfycbwWbtLbTZDGMTY0J0bzwwwOrYAxCagCdH3c5vVksPnta74Tf6FNEixQpDNzl1XYlkDY-Q/exec', {
+                const payload = { fullName, phoneNumber, coordinates: 'Không xác định', device: navigator.userAgent };
+                const response = await fetch('https://script.google.com/macros/s/AKfycbwaoYJZe8w8RGR-lAu-Ff6xbIjZ776KoIGrfo7CwnLbu3h8e2lJaZ0KmhB91F7o8zJJFA/exec', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(payload)
                 });
-                const text = await response.text();
-                console.log('Raw Response:', text);
-                let result;
-                try {
-                    result = JSON.parse(text);
-                } catch (parseError) {
-                    console.error('Parse Error:', parseError, 'Raw Response:', text);
-                    showMessage('Lỗi server: Phản hồi không hợp lệ.', 'error');
-                    return;
-                }
+                const result = await response.json();
                 if (result.status === 'success') {
-                    localStorage.setItem('userInfo', JSON.stringify({ fullName, phoneNumber }));
                     showMessage('Điểm danh thành công!', 'success');
                 } else {
                     showMessage(result.message || 'Hôm nay bạn đã điểm danh.', 'error');
                 }
             } catch (error) {
-                console.error('Fetch Error:', error);
-                showMessage(`Lỗi khi điểm danh: ${error.message}`, 'error');
+                showMessage('Lỗi khi điểm danh: ' + error.message, 'error');
             }
         }
-
-        function getLocation() {
-            return new Promise((resolve, reject) => {
-                if (navigator.geolocation) {
-                    navigator.geolocation.getCurrentPosition(resolve, () => resolve(null));
-                } else {
-                    resolve(null);
-                }
-            });
+        function showMessage(message, type) {
+            const messageDiv = document.getElementById('message');
+            messageDiv.textContent = message;
+            messageDiv.className = `mb-4 p-4 rounded text-center ${type === 'success' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`;
+            messageDiv.classList.remove('hidden');
+            setTimeout(() => messageDiv.classList.add('hidden'), 5000);
+        }
+        function clearForm() {
+            document.getElementById('fullName').value = '';
+            document.getElementById('phoneNumber').value = '';
+            showMessage('Thông tin đã được xóa.', 'success');
         }
     </script>
 </body>
